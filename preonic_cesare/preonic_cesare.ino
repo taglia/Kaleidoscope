@@ -1,4 +1,4 @@
-/* Kaleidoscope-Hardware-Keyboardio-Preonic -- Keyboardio Preonic hardware support for Kaleidoscope
+/* Kaleidoscope-Hardware-Keyboardio-Preonic -- Cesare's Custom Configuration
  * Copyright 2018-2025 Keyboard.io, inc.
  *
  * This program is free software: you can redistribute it and/or modify it under
@@ -19,101 +19,100 @@
  * You should have received a copy of the GNU General Public License along with
  * this program. If not, see <http://www.gnu.org/licenses/>.
  */
+
 #ifndef BUILD_INFORMATION
 #define BUILD_INFORMATION "locally built on " __DATE__ " at " __TIME__
 #endif
 
+// =============================================================================
+// INCLUDES
+// =============================================================================
+
 #include "Kaleidoscope.h"
+
+// Core functionality
 #include "Kaleidoscope-EEPROM-Settings.h"
 #include "Kaleidoscope-EEPROM-Keymap.h"
-#include "Kaleidoscope-Escape-OneShot.h"
-#include "Kaleidoscope-FirmwareVersion.h"
 #include "Kaleidoscope-FocusSerial.h"
-#include "Kaleidoscope-Macros.h"
-#include "Kaleidoscope-MouseKeys.h"
+#include "Kaleidoscope-FirmwareVersion.h"
+
+// Key behavior plugins
+#include "Kaleidoscope-Escape-OneShot.h"
 #include "Kaleidoscope-OneShot.h"
 #include "Kaleidoscope-Qukeys.h"
 #include "Kaleidoscope-SpaceCadet.h"
-#include "Kaleidoscope-DynamicMacros.h"
-#include "Kaleidoscope-LayerNames.h"
-#include "Kaleidoscope-HostPowerManagement.h"
-#include "Kaleidoscope-LEDControl.h"
-#include "Kaleidoscope-Keyclick.h"
 #include "Kaleidoscope-TapDance.h"
 
+// Macro and layer plugins
+#include "Kaleidoscope-Macros.h"
+#include "Kaleidoscope-DynamicMacros.h"
+#include "Kaleidoscope-LayerNames.h"
+#include "Kaleidoscope-MouseKeys.h"
+
+// Hardware and connectivity
+#include "Kaleidoscope-HostPowerManagement.h"
+#include "Kaleidoscope-Keyclick.h"
+
+// LED effects and control
+#include "Kaleidoscope-LEDControl.h"
 #include "Kaleidoscope-LEDEffect-Rainbow.h"
 #include "Kaleidoscope-LEDEffect-BootGreeting.h"
-// Support for shared palettes for other plugins, like Colormap below
 #include "Kaleidoscope-LED-Palette-Theme.h"
-
-// Support for an LED mode that lets one configure per-layer color maps
 #include "Kaleidoscope-PreonicColormap.h"
-
-
-// Support for setting and saving the default LED mode
 #include "Kaleidoscope-DefaultLEDModeConfig.h"
-
-// Support for changing the brightness of the LEDs
 #include "Kaleidoscope-LEDBrightnessConfig.h"
-
-// Support for showing device status with the LED Indicators
 #include "Kaleidoscope-LEDIndicators.h"
 
+// =============================================================================
+// LAYER DEFINITIONS
+// =============================================================================
 
-/** This 'enum' is a list of all the macros used by the Model 100's firmware
-  * The names aren't particularly important. What is important is that each
-  * is unique.
-  *
-  * These are the names of your macros. They'll be used in two places.
-  * The first is in your keymap definitions. There, you'll use the syntax
-  * `M(MACRO_NAME)` to mark a specific keymap position as triggering `MACRO_NAME`
-  *
-  * The second usage is in the 'switch' statement in the `macroAction` function.
-  * That switch statement actually runs the code associated with a macro when
-  * a macro key is pressed.
-  */
+enum {
+  QWERTY,  // Base layer
+  RAISE,   // Numbers, symbols, F-keys
+  LOWER,   // Numbers, navigation
+  ADJUST,  // Mouse, advanced F-keys (activated by RAISE+LOWER)
+  FUN      // Bluetooth, system controls
+};
+
+// =============================================================================
+// MACRO DEFINITIONS
+// =============================================================================
 
 enum {
   MACRO_VERSION_INFO,
   MACRO_ANY,
   MACRO_TOGGLE_MODE,
-  MACRO_BT_SELECT_1,  // Select slot 1
-  MACRO_BT_SELECT_2,  // Select slot 2
-  MACRO_BT_SELECT_3,  // Select slot 3
-  MACRO_BT_SELECT_4,  // Select slot 4
-  MACRO_BT_PAIR,      // Start pairing for selected slot
+  MACRO_BT_SELECT_1, MACRO_BT_SELECT_2, MACRO_BT_SELECT_3, MACRO_BT_SELECT_4,
+  MACRO_BT_PAIR,
   MACRO_BT_OFF,
-  MACRO_BATTERY_LEVEL,  // Report current battery level
-  // Cesare's Macros
+  MACRO_BATTERY_LEVEL,
 };
 
-// Layers
-enum {
-  QWERTY,
-  RAISE,
-  LOWER,
-  ADJUST,
-  FUN
-};
+// =============================================================================
+// CUSTOM PLUGIN: MOMENTARY ADJUST LAYER
+// =============================================================================
 
-// Custom plugin for momentary ADJUST layer activation
 namespace kaleidoscope {
 namespace plugin {
 
+/**
+ * MomentaryAdjustLayer activates the ADJUST layer only while both
+ * RAISE and LOWER keys are held simultaneously. The layer deactivates
+ * immediately when either key is released.
+ */
 class MomentaryAdjustLayer : public Plugin {
  public:
   EventHandlerResult afterEachCycle() {
-    // Check if both RAISE and LOWER are currently pressed
+    // Check if both RAISE (row 5, col 7) and LOWER (row 5, col 4) are pressed
     bool raise_pressed = Runtime.device().isKeyswitchPressed(KeyAddr(5, 7));
     bool lower_pressed = Runtime.device().isKeyswitchPressed(KeyAddr(5, 4));
     
     if (raise_pressed && lower_pressed) {
-      // Both keys pressed - activate ADJUST layer if not already active
       if (!Layer.isActive(ADJUST)) {
         Layer.activate(ADJUST);
       }
     } else {
-      // At least one key released - deactivate ADJUST layer if active
       if (Layer.isActive(ADJUST)) {
         Layer.deactivate(ADJUST);
       }
@@ -128,104 +127,66 @@ class MomentaryAdjustLayer : public Plugin {
 
 kaleidoscope::plugin::MomentaryAdjustLayer MomentaryAdjustLayer;
 
+// =============================================================================
+// TAP DANCE CONFIGURATION
+// =============================================================================
+
+// Convenient key definitions
 #define Key_Star LSHIFT(Key_8)
 #define Key_Plus LSHIFT(Key_Equals)
 
-//////////////////////
-// TapDance config
-
 enum {
-  TD_CAPS_LOCK,
-  TD_AW1,
-  TD_AW2,
-  TD_AW3,
-  TD_AW4,
-  TD_AW5,
-  TD_AW6,
-  TD_AW7,
-  TD_AW8,
-  TD_AW9
+  TD_CAPS_LOCK,  // Tap: Left Shift, Double-tap: Caps Lock
+  TD_AW1, TD_AW2, TD_AW3, TD_AW4, TD_AW5,  // Alt+Number window switching
+  TD_AW6, TD_AW7, TD_AW8, TD_AW9
 };
+
+/**
+ * Helper function for Alt+Number window switching TapDance actions.
+ * Single tap: Alt+Number, Double tap: Shift+Alt+Number
+ */
+void handleAltWindowSwitch(uint8_t number, uint8_t tap_count) {
+  Key number_key;
+  switch (number) {
+    case 1: number_key = Key_1; break;
+    case 2: number_key = Key_2; break;
+    case 3: number_key = Key_3; break;
+    case 4: number_key = Key_4; break;
+    case 5: number_key = Key_5; break;
+    case 6: number_key = Key_6; break;
+    case 7: number_key = Key_7; break;
+    case 8: number_key = Key_8; break;
+    case 9: number_key = Key_9; break;
+    default: return;
+  }
+  
+  if (tap_count == 1) {
+    Macros.play(MACRO(I(50), D(LeftAlt), Tr(number_key), U(LeftAlt)));
+  } else if (tap_count == 2) {
+    Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(number_key), U(LeftAlt), U(LeftShift)));
+  }
+}
 
 void tapDanceAction(uint8_t tap_dance_index, KeyAddr key_addr, uint8_t tap_count,
                     kaleidoscope::plugin::TapDance::ActionType tap_dance_action) {
   switch (tap_dance_index) {
     case TD_CAPS_LOCK:
       return tapDanceActionKeys(tap_count, tap_dance_action, Key_LeftShift, Key_CapsLock);
-    case TD_AW1:
+      
+    // Alt+Number window switching (TD_AW1 through TD_AW9)
+    case TD_AW1: case TD_AW2: case TD_AW3: case TD_AW4: case TD_AW5:
+    case TD_AW6: case TD_AW7: case TD_AW8: case TD_AW9:
       if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(1), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(1), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW2:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(2), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(2), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW3:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(3), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(3), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW4:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(4), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(4), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW5:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(5), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(5), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW6:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(6), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(6), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW7:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(7), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(7), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW8:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(8), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(8), U(LeftAlt), U(LeftShift)));
-      }
-      break;
-    case TD_AW9:
-      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        if (tap_count == 1)
-          Macros.play(MACRO(I(50), D(LeftAlt), T(9), U(LeftAlt)));
-        else if (tap_count == 2)
-          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), T(9), U(LeftAlt), U(LeftShift)));
+        uint8_t number = (tap_dance_index - TD_AW1) + 1;  // Convert to 1-9
+        handleAltWindowSwitch(number, tap_count);
       }
       break;
   }
 }
+
+// =============================================================================
+// KEYMAPS
+// =============================================================================
 
 // clang-format off
 KEYMAPS(
@@ -279,172 +240,100 @@ KEYMAPS(
    M(MACRO_BATTERY_LEVEL),  ___,                                                                             ___,                   ___,                   ___,                   ___,                  ___,  ___,  ___,  ___,  ___,  ___
   )
 );
-
-
-// Colors names of the EGA palette, for convenient use in colormaps. Should
-// match the palette definition below. Optional, one can just use the indexes
-// directly, too.
-enum {
-  BLACK,
-  BLUE,
-  GREEN,
-  CYAN,
-  RED,
-  MAGENTA,
-  BROWN,
-  LIGHT_GRAY,
-  DARK_GRAY,
-  BRIGHT_BLUE,
-  BRIGHT_GREEN,
-  BRIGHT_CYAN,
-  BRIGHT_RED,
-  BRIGHT_MAGENTA,
-  YELLOW,
-  WHITE
-};
-
-// Define an EGA palette. Conveniently, that's exactly 16 colors, just like the
-// limit of LEDPaletteTheme.
-PALETTE(
-    CRGB(0x00, 0x00, 0x00),  // [0x0] black
-    CRGB(0x00, 0x00, 0xaa),  // [0x1] blue
-    CRGB(0x00, 0xaa, 0x00),  // [0x2] green
-    CRGB(0x00, 0xaa, 0xaa),  // [0x3] cyan
-    CRGB(0xaa, 0x00, 0x00),  // [0x4] red
-    CRGB(0xaa, 0x00, 0xaa),  // [0x5] magenta
-    CRGB(0xaa, 0x55, 0x00),  // [0x6] brown
-    CRGB(0xaa, 0xaa, 0xaa),  // [0x7] light gray
-    CRGB(0x55, 0x55, 0x55),  // [0x8] dark gray
-    CRGB(0x55, 0x55, 0xff),  // [0x9] bright blue
-    CRGB(0x55, 0xff, 0x55),  // [0xa] bright green
-    CRGB(0x55, 0xff, 0xff),  // [0xb] bright cyan
-    CRGB(0xff, 0x55, 0x55),  // [0xc] bright red
-    CRGB(0xff, 0x55, 0xff),  // [0xd] bright magenta
-    CRGB(0xff, 0xff, 0x55),  // [0xe] yellow
-    CRGB(0xff, 0xff, 0xff)   // [0xf] white
-)
-
-COLORMAPS(
-    [0] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [1] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [2] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [3] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [4] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [5] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [6] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [7] = COLORMAP (BLACK,  BLACK, BLACK, BLACK),
-    [8] = COLORMAP (BLACK,  BLACK, BLACK, BLACK)  
-)
-
-
 // clang-format on
 
+// =============================================================================
+// LED COLOR PALETTE CONFIGURATION
+// =============================================================================
+
+// EGA color palette for LED themes
+enum {
+  BLACK, BLUE, GREEN, CYAN, RED, MAGENTA, BROWN, LIGHT_GRAY,
+  DARK_GRAY, BRIGHT_BLUE, BRIGHT_GREEN, BRIGHT_CYAN, 
+  BRIGHT_RED, BRIGHT_MAGENTA, YELLOW, WHITE
+};
+
+PALETTE(
+  CRGB(0x00, 0x00, 0x00),  // black
+  CRGB(0x00, 0x00, 0xaa),  // blue
+  CRGB(0x00, 0xaa, 0x00),  // green
+  CRGB(0x00, 0xaa, 0xaa),  // cyan
+  CRGB(0xaa, 0x00, 0x00),  // red
+  CRGB(0xaa, 0x00, 0xaa),  // magenta
+  CRGB(0xaa, 0x55, 0x00),  // brown
+  CRGB(0xaa, 0xaa, 0xaa),  // light gray
+  CRGB(0x55, 0x55, 0x55),  // dark gray
+  CRGB(0x55, 0x55, 0xff),  // bright blue
+  CRGB(0x55, 0xff, 0x55),  // bright green
+  CRGB(0x55, 0xff, 0xff),  // bright cyan
+  CRGB(0xff, 0x55, 0x55),  // bright red
+  CRGB(0xff, 0x55, 0xff),  // bright magenta
+  CRGB(0xff, 0xff, 0x55),  // yellow
+  CRGB(0xff, 0xff, 0xff)   // white
+)
+
+// Default colormap (all LEDs off)
+COLORMAPS(
+  [0] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [1] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [2] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [3] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [4] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [5] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [6] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [7] = COLORMAP(BLACK, BLACK, BLACK, BLACK),
+  [8] = COLORMAP(BLACK, BLACK, BLACK, BLACK)
+)
+
+// =============================================================================
+// PLUGIN INITIALIZATION
+// =============================================================================
+
 KALEIDOSCOPE_INIT_PLUGINS(
-  // ----------------------------------------------------------------------
-  // Chrysalis plugins
+  // Core functionality
+  EEPROMSettings, EEPROMKeymap, Focus, FocusSettingsCommand, FocusEEPROMCommand,
+  FirmwareVersion, LayerNames,
 
-  // The EEPROMSettings & EEPROMKeymap plugins make it possible to have an
-  // editable keymap in EEPROM.
-  EEPROMSettings,
-  EEPROMKeymap,
+  // Key behavior
+  Qukeys, SpaceCadet, SpaceCadetConfig,
+  OneShot, OneShotConfig, EscapeOneShot, EscapeOneShotConfig,
+  Macros, DynamicMacros, MouseKeys, MouseKeysConfig, TapDance,
 
-  // Focus allows bi-directional communication with the host, and is the
-  // interface through which the keymap in EEPROM can be edited.
-  Focus,
-
-  // FocusSettingsCommand adds a few Focus commands, intended to aid in
-  // changing some settings of the keyboard, such as the default layer (via the
-  // `settings.defaultLayer` command)
-  FocusSettingsCommand,
-
-  // FocusEEPROMCommand adds a set of Focus commands, which are very helpful in
-  // both debugging, and in backing up one's EEPROM contents.
-  FocusEEPROMCommand,
-
-  // The FirmwareVersion plugin lets Chrysalis query the version of the firmware
-  // programmatically.
-  FirmwareVersion,
-
-  // The LayerNames plugin allows Chrysalis to display - and edit - custom layer
-  // names, to be shown instead of the default indexes.
-  LayerNames,
-
-  // ----------------------------------------------------------------------
-  // Keystroke-handling plugins
-
-  // The Qukeys plugin enables the "Secondary action" functionality in
-  // Chrysalis. Keys with secondary actions will have their primary action
-  // performed when tapped, but the secondary action when held.
-  Qukeys,
-
-  // SpaceCadet can turn your shifts into parens on tap, while keeping them as
-  // Shifts when held. SpaceCadetConfig lets Chrysalis configure some aspects of
-  // the plugin.
-  SpaceCadet,
-  SpaceCadetConfig,
-
-  // Enables the "Sticky" behavior for modifiers, and the "Layer shift when
-  // held" functionality for layer keys.
-  OneShot,
-  OneShotConfig,
-  EscapeOneShot,
-  EscapeOneShotConfig,
-
-  // The macros plugin adds support for macros
-  Macros,
-
-  // Enables dynamic, Chrysalis-editable macros.
-  DynamicMacros,
-
-  // The MouseKeys plugin lets you add keys to your keymap which move the mouse.
-  MouseKeys,
-  MouseKeysConfig,
-
-  // Custom plugin for momentary ADJUST layer when RAISE+LOWER are held
+  // Custom functionality
   MomentaryAdjustLayer,
 
-  // LEDControl provides support for other LED modes
-  LEDControl,
+  // LED control and effects
+  LEDControl, DefaultLEDModeConfig, LEDOff, LEDPaletteTheme,
+  PreonicColormapEffect, DefaultPreonicColormap, LEDBrightnessConfig,
+  LEDRainbowEffect, Keyclick, LEDIndicators
+);
 
-  // Enables setting, saving (via Chrysalis), and restoring (on boot) the
-  // default LED mode.
-  DefaultLEDModeConfig,
-
-
-  // We start with the LED effect that turns off all the LEDs.
-  LEDOff,
-
-  LEDPaletteTheme,
-
-  // The Colormap effect makes it possible to set up per-layer colormaps
-  PreonicColormapEffect,
-  DefaultPreonicColormap,
-
-  // The HostPowerManagement plugin allows us to turn LEDs off when then host
-  // goes to sleep, and resume them when it wakes up.
-  // HostPowerManagement,
-
-  LEDBrightnessConfig,
-  LEDRainbowEffect,
-
-  // The Keyclick plugin for audible feedback
-  Keyclick,
-  // LEDIndicators shows device status indicators using the LEDs
-  // It should be listed after all other LED plugins
-  LEDIndicators,
-  TapDance);
-
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
 
 void configureIndicators() {
-  // Configure LED mapping to use our four LEDs
+  // Map LEDs to the four encoder positions
   static const KeyAddr indicator_leds[] = {
-    KeyAddr(0, 0),
-    KeyAddr(0, 1),
-    KeyAddr(0, 2),
-    KeyAddr(0, 3)};
+    KeyAddr(0, 0), KeyAddr(0, 1), KeyAddr(0, 2), KeyAddr(0, 3)
+  };
   LEDIndicators.setSlots(4, indicator_leds);
 }
 
+/**
+ * Helper function for Bluetooth device selection macros.
+ * Selects the specified device slot and switches to BLE mode.
+ */
+void selectBluetoothDevice(uint8_t device_slot) {
+  if (keyToggledOn(kaleidoscope::Runtime.device().pressedKeyswitchCount())) {
+    kaleidoscope::Runtime.device().ble().selectDevice(device_slot);
+    kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
+  }
+}
+
+// =============================================================================
+// MACRO IMPLEMENTATIONS
+// =============================================================================
 
 static void versionInfoMacro(uint8_t key_state) {
   if (keyToggledOn(key_state)) {
@@ -453,239 +342,147 @@ static void versionInfoMacro(uint8_t key_state) {
   }
 }
 
-/** anyKeyMacro is used to provide the functionality of the 'Any' key.
- *
- * When the 'any key' macro is toggled on, a random alphanumeric key is
- * selected. While the key is held, the function generates a synthetic
- * keypress event repeating that randomly selected key.
- *
- */
-
 static void anyKeyMacro(KeyEvent &event) {
   if (keyToggledOn(event.state)) {
+    // Generate random alphanumeric key (A-Z, 0-9)
     event.key.setKeyCode(Key_A.getKeyCode() + (uint8_t)(millis() % 36));
     event.key.setFlags(0);
   }
 }
 
-/** macroAction dispatches keymap events that are tied to a macro
-    to that macro. It takes two uint8_t parameters.
-
-    The first is the macro being called (the entry in the 'enum' earlier in this file).
-    The second is the state of the keyswitch. You can use the keyswitch state to figure out
-    if the key has just been toggled on, is currently pressed or if it's just been released.
-
-    The 'switch' statement should have a 'case' for each entry of the macro enum.
-    Each 'case' statement should call out to a function to handle the macro in question.
-
- */
-
-// Helper function to report battery level
 static void batteryLevelMacro(uint8_t key_state) {
-  if (keyToggledOn(key_state)) {
-    // Get the battery level
-    uint8_t battery_level = kaleidoscope::Runtime.device().batteryGauge().getBatteryLevel();
-
-    // Report battery level with a message
-    Macros.type(PSTR("Battery Status:\n"));
-
-    // Battery percentage
-    char percentage[5];
-    snprintf(percentage, sizeof(percentage), "%d%%", battery_level);
-    Macros.type(PSTR("Level: "));
-    Macros.type(percentage);
-    Macros.type(PSTR("\n"));
-
-    // Raw battery level
-    char raw_level[5];
-    snprintf(raw_level, sizeof(raw_level), "%d", kaleidoscope::Runtime.device().batteryGauge().getRawBatteryLevel());
-    Macros.type(PSTR("Raw Level: "));
-    Macros.type(raw_level);
-    Macros.type(PSTR("\n"));
-
-    // Battery voltage
-    char voltage[8];
-    snprintf(voltage, sizeof(voltage), "%.2fV", kaleidoscope::Runtime.device().batteryGauge().getVoltage() / 1000.0f);
-    Macros.type(PSTR("Voltage: "));
-    Macros.type(voltage);
-    Macros.type(PSTR("\n"));
-
-    // Charge rate
-    int16_t charge_rate = kaleidoscope::Runtime.device().batteryGauge().getChargeRate();
-    char rate[8];
-    snprintf(rate, sizeof(rate), "%.2f%%/hr", charge_rate * 0.208f);
-    Macros.type(PSTR("Charge Rate: "));
-    Macros.type(rate);
-    Macros.type(PSTR("\n"));
-
-    // Charging status
-    Macros.type(PSTR("Power Source: "));
-    if (kaleidoscope::Runtime.device().batteryCharger().hasPower()) {
-      Macros.type(PSTR("Connected\n"));
-
-      Macros.type(PSTR("Charging Status: "));
-      uint8_t charging_state = kaleidoscope::Runtime.device().batteryCharger().getChargingState();
-
-      // Using defined enum values from BQ24075
-      typedef kaleidoscope::driver::battery_charger::BQ24075<kaleidoscope::device::keyboardio::PreonicBatteryChargerProps> BQ24075;
-
-      switch (charging_state) {
-      case BQ24075::CHARGING:
-        Macros.type(PSTR("Charging\n"));
-        break;
-      case BQ24075::CHARGE_COMPLETE:
-        Macros.type(PSTR("Charge Complete\n"));
-        break;
-      case BQ24075::CHARGE_FAULT:
-        Macros.type(PSTR("Fault Detected\n"));
-        break;
-      case BQ24075::NO_BATTERY:
-        Macros.type(PSTR("No Battery\n"));
-        break;
-      case BQ24075::BATTERY_DISCONNECTED:
-        Macros.type(PSTR("Battery Disconnected\n"));
-        break;
-      default:
-        Macros.type(PSTR("Not Charging\n"));
-        break;
-      }
-
-      // No need to print static configuration values in the status report
-    } else {
-      Macros.type(PSTR("Battery\n"));
+  if (!keyToggledOn(key_state)) return;
+  
+  auto& device = kaleidoscope::Runtime.device();
+  auto& gauge = device.batteryGauge();
+  auto& charger = device.batteryCharger();
+  
+  // Battery level and basic info
+  uint8_t battery_level = gauge.getBatteryLevel();
+  uint16_t voltage = gauge.getVoltage();
+  int16_t charge_rate = gauge.getChargeRate();
+  
+  Macros.type(PSTR("Battery Status:\n"));
+  
+  // Format and output battery information
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "Level: %d%%\n", battery_level);
+  Macros.type(buffer);
+  
+  snprintf(buffer, sizeof(buffer), "Voltage: %.2fV\n", voltage / 1000.0f);
+  Macros.type(buffer);
+  
+  snprintf(buffer, sizeof(buffer), "Rate: %.2f%%/hr\n", charge_rate * 0.208f);
+  Macros.type(buffer);
+  
+  // Power source and charging status
+  Macros.type(PSTR("Power: "));
+  if (charger.hasPower()) {
+    Macros.type(PSTR("Connected - "));
+    
+    uint8_t charging_state = charger.getChargingState();
+    typedef kaleidoscope::driver::battery_charger::BQ24075<kaleidoscope::device::keyboardio::PreonicBatteryChargerProps> BQ24075;
+    
+    switch (charging_state) {
+      case BQ24075::CHARGING: Macros.type(PSTR("Charging")); break;
+      case BQ24075::CHARGE_COMPLETE: Macros.type(PSTR("Complete")); break;
+      case BQ24075::CHARGE_FAULT: Macros.type(PSTR("Fault")); break;
+      case BQ24075::NO_BATTERY: Macros.type(PSTR("No Battery")); break;
+      case BQ24075::BATTERY_DISCONNECTED: Macros.type(PSTR("Disconnected")); break;
+      default: Macros.type(PSTR("Not Charging")); break;
     }
-
-    // Alert status
-    Macros.type(PSTR("Alerts: "));
-    if (kaleidoscope::Runtime.device().batteryGauge().hasLowBatteryAlert()) {
-      Macros.type(PSTR("Low Battery "));
-    }
-    if (kaleidoscope::Runtime.device().batteryGauge().hasChangeAlert()) {
-      Macros.type(PSTR("Level Changed "));
-    }
-    if (kaleidoscope::Runtime.device().batteryGauge().hasLowVoltageAlert()) {
-      Macros.type(PSTR("Low Voltage "));
-    }
-    if (kaleidoscope::Runtime.device().batteryGauge().hasHighVoltageAlert()) {
-      Macros.type(PSTR("High Voltage "));
-    }
-    if (!kaleidoscope::Runtime.device().batteryGauge().hasLowBatteryAlert() &&
-        !kaleidoscope::Runtime.device().batteryGauge().hasChangeAlert() &&
-        !kaleidoscope::Runtime.device().batteryGauge().hasLowVoltageAlert() &&
-        !kaleidoscope::Runtime.device().batteryGauge().hasHighVoltageAlert()) {
-      Macros.type(PSTR("None"));
-    }
-    Macros.type(PSTR("\n"));
-
-    // Hibernate status
-    if (kaleidoscope::Runtime.device().batteryGauge().isHibernating()) {
-      Macros.type(PSTR("Status: Hibernating\n"));
-    } else {
-      Macros.type(PSTR("Status: Active\n"));
-    }
-
-    // Firmware version
-    char version[6];
-    snprintf(version, sizeof(version), "0x%04X", kaleidoscope::Runtime.device().batteryGauge().getVersion());
-    Macros.type(PSTR("Gauge IC: "));
-    Macros.type(version);
-    Macros.type(PSTR("\n"));
+  } else {
+    Macros.type(PSTR("Battery"));
   }
+  Macros.type(PSTR("\n"));
+  
+  // Alert status summary
+  Macros.type(PSTR("Status: "));
+  if (gauge.isHibernating()) {
+    Macros.type(PSTR("Hibernating"));
+  } else if (gauge.hasLowBatteryAlert() || gauge.hasLowVoltageAlert()) {
+    Macros.type(PSTR("Low Battery"));
+  } else if (gauge.hasChangeAlert()) {
+    Macros.type(PSTR("Level Changed"));
+  } else {
+    Macros.type(PSTR("Normal"));
+  }
+  Macros.type(PSTR("\n"));
 }
 
 const macro_t *macroAction(uint8_t macro_id, KeyEvent &event) {
   switch (macro_id) {
-  case MACRO_VERSION_INFO:
-    versionInfoMacro(event.state);
-    break;
-  case MACRO_ANY:
-    anyKeyMacro(event);
-    break;
-  case MACRO_TOGGLE_MODE:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().toggleHostConnectionMode();
-    }
-    break;
-  case MACRO_BT_SELECT_1:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().ble().selectDevice(1);
-      kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
-    }
-    break;
-  case MACRO_BT_SELECT_2:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().ble().selectDevice(2);
-      kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
-    }
-    break;
-  case MACRO_BT_SELECT_3:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().ble().selectDevice(3);
-      kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
-    }
-    break;
-  case MACRO_BT_SELECT_4:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().ble().selectDevice(4);
-      kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
-    }
-    break;
-  case MACRO_BT_PAIR:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().ble().startDiscoverableAdvertising();
-    }
-    break;
-  case MACRO_BT_OFF:
-    if (keyToggledOn(event.state)) {
-      kaleidoscope::Runtime.device().ble().stopAdvertising();
-      kaleidoscope::Runtime.device().ble().disconnect();
-      kaleidoscope::Runtime.device().setHostConnectionMode(MODE_USB);
-    }
-    break;
-  case MACRO_BATTERY_LEVEL:
-    batteryLevelMacro(event.state);
-    break;
+    case MACRO_VERSION_INFO:
+      versionInfoMacro(event.state);
+      break;
+    case MACRO_ANY:
+      anyKeyMacro(event);
+      break;
+    case MACRO_TOGGLE_MODE:
+      if (keyToggledOn(event.state)) {
+        kaleidoscope::Runtime.device().toggleHostConnectionMode();
+      }
+      break;
+    case MACRO_BT_SELECT_1: case MACRO_BT_SELECT_2:
+    case MACRO_BT_SELECT_3: case MACRO_BT_SELECT_4:
+      if (keyToggledOn(event.state)) {
+        uint8_t device_slot = (macro_id - MACRO_BT_SELECT_1) + 1;
+        kaleidoscope::Runtime.device().ble().selectDevice(device_slot);
+        kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
+      }
+      break;
+    case MACRO_BT_PAIR:
+      if (keyToggledOn(event.state)) {
+        kaleidoscope::Runtime.device().ble().startDiscoverableAdvertising();
+      }
+      break;
+    case MACRO_BT_OFF:
+      if (keyToggledOn(event.state)) {
+        auto& ble = kaleidoscope::Runtime.device().ble();
+        ble.stopAdvertising();
+        ble.disconnect();
+        kaleidoscope::Runtime.device().setHostConnectionMode(MODE_USB);
+      }
+      break;
+    case MACRO_BATTERY_LEVEL:
+      batteryLevelMacro(event.state);
+      break;
   }
   return MACRO_NONE;
 }
 
+// =============================================================================
+// SETUP AND MAIN LOOP
+// =============================================================================
+
 void setup() {
-  /////////////////////
-  // Qukeys
+  // Configure Qukeys for modifier behavior on home row
   QUKEYS(
-      kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 1), Key_LeftShift),
-      kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 10), Key_RightShift),
-      kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 4), Key_LeftAlt),
-      kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 7), Key_RightAlt)
-      );
+    kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 1), Key_LeftShift),   // A
+    kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 10), Key_RightShift), // ;
+    kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 4), Key_LeftAlt),     // F
+    kaleidoscope::plugin::Qukey(QWERTY, KeyAddr(3, 7), Key_RightAlt)     // J
+  );
 
   Kaleidoscope.setup();
   configureIndicators();
 
+  // Configure EEPROM and storage
   EEPROMKeymap.setup(9);
-  PreonicColormapEffect.max_layers(9);
-  LEDRainbowEffect.brightness(25);
-
   DynamicMacros.reserve_storage(512);
-
   LayerNames.reserve_storage(128);
 
-  // Disable Keyclick by default
-  Keyclick.disable();
-
-  Layer.move(EEPROMSettings.default_layer());
-
-  // To avoid any surprises, SpaceCadet is turned off by default. However, it
-  // can be permanently enabled via Chrysalis, so we should only disable it if
-  // no configuration exists.
-  SpaceCadetConfig.disableSpaceCadetIfUnconfigured();
-
-  //  DefaultLEDModeConfig.activateLEDModeIfUnconfigured(&LEDRainbowEffect);
-
+  // Configure LED effects
+  PreonicColormapEffect.max_layers(9);
+  LEDRainbowEffect.brightness(25);
   DefaultLEDModeConfig.activateLEDModeIfUnconfigured(&LEDOff);
 
-  //kaleidoscope::Runtime.device().ble().selectDevice(1);
-  //kaleidoscope::Runtime.device().setHostConnectionMode(MODE_BLE);
+  // Configure plugins
+  Keyclick.disable();  // Start with keyclick disabled
+  SpaceCadetConfig.disableSpaceCadetIfUnconfigured();
+  
+  // Set default layer from EEPROM
+  Layer.move(EEPROMSettings.default_layer());
 }
 
 void loop() {
