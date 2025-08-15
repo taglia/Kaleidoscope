@@ -141,31 +141,6 @@ enum {
   TD_AW6, TD_AW7, TD_AW8, TD_AW9
 };
 
-/**
- * Helper function for Alt+Number window switching TapDance actions.
- * Single tap: Alt+Number, Double tap: Shift+Alt+Number
- */
-void handleAltWindowSwitch(uint8_t number, uint8_t tap_count) {
-  Key number_key;
-  switch (number) {
-    case 1: number_key = Key_1; break;
-    case 2: number_key = Key_2; break;
-    case 3: number_key = Key_3; break;
-    case 4: number_key = Key_4; break;
-    case 5: number_key = Key_5; break;
-    case 6: number_key = Key_6; break;
-    case 7: number_key = Key_7; break;
-    case 8: number_key = Key_8; break;
-    case 9: number_key = Key_9; break;
-    default: return;
-  }
-  
-  if (tap_count == 1) {
-    Macros.play(MACRO(I(50), D(LeftAlt), Tr(number_key), U(LeftAlt)));
-  } else if (tap_count == 2) {
-    Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(number_key), U(LeftAlt), U(LeftShift)));
-  }
-}
 
 void tapDanceAction(uint8_t tap_dance_index, KeyAddr key_addr, uint8_t tap_count,
                     kaleidoscope::plugin::TapDance::ActionType tap_dance_action) {
@@ -173,12 +148,76 @@ void tapDanceAction(uint8_t tap_dance_index, KeyAddr key_addr, uint8_t tap_count
     case TD_CAPS_LOCK:
       return tapDanceActionKeys(tap_count, tap_dance_action, Key_LeftShift, Key_CapsLock);
       
-    // Alt+Number window switching (TD_AW1 through TD_AW9)
-    case TD_AW1: case TD_AW2: case TD_AW3: case TD_AW4: case TD_AW5:
-    case TD_AW6: case TD_AW7: case TD_AW8: case TD_AW9:
+    case TD_AW1:
       if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
-        uint8_t number = (tap_dance_index - TD_AW1) + 1;  // Convert to 1-9
-        handleAltWindowSwitch(number, tap_count);
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_1), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_1), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW2:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_2), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_2), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW3:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_3), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_3), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW4:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_4), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_4), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW5:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_5), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_5), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW6:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_6), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_6), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW7:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_7), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_7), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW8:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_8), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_8), U(LeftAlt), U(LeftShift)));
+      }
+      break;
+    case TD_AW9:
+      if (tap_dance_action == kaleidoscope::plugin::TapDance::Timeout) {
+        if (tap_count == 1)
+          Macros.play(MACRO(I(50), D(LeftAlt), Tr(Key_9), U(LeftAlt)));
+        else if (tap_count == 2)
+          Macros.play(MACRO(I(50), D(LeftShift), D(LeftAlt), Tr(Key_9), U(LeftAlt), U(LeftShift)));
       }
       break;
   }
